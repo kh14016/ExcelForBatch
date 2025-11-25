@@ -1,0 +1,164 @@
+# Excel Shell Executor
+
+クロスプラットフォーム対応のExcelシェルコマンド実行アプリケーション
+
+## 機能
+
+- ✅ Excel (.xlsx) ファイルから指定列のコマンドを読み込み
+- ✅ Windows / macOS / Linux 対応
+- ✅ Web UIで簡単操作
+- ✅ コマンド実行間隔の調整可能
+- ✅ 実行結果の詳細表示
+
+## 技術スタック
+
+- **Java**: 21
+- **Spring Boot**: 3.3.5
+- **Apache POI**: 5.2.5 (Excel操作)
+- **Build Tool**: Maven
+- **UI**: Thymeleaf + HTML/CSS
+
+## 前提条件
+
+- Java 21以上
+- Maven 3.6以上
+
+## セットアップ
+
+### 1. プロジェクト構造
+
+```
+excel-shell-executor/
+├── pom.xml
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/
+│   │   │       └── excelshell/
+│   │   │           ├── ExcelShellExecutorApplication.java
+│   │   │           ├── controller/
+│   │   │           │   └── ShellExecutorController.java
+│   │   │           └── service/
+│   │   │               └── ShellExecutorService.java
+│   │   └── resources/
+│   │       ├── application.properties
+│   │       └── templates/
+│   │           ├── index.html
+│   │           └── result.html
+└── README.md
+```
+
+### 2. ビルドと実行
+
+```bash
+# プロジェクトのビルド
+mvn clean package
+
+# アプリケーションの起動
+mvn spring-boot:run
+
+# または、jarファイルから起動
+java -jar target/excel-shell-executor-1.0.0.jar
+```
+
+### 3. アクセス
+
+ブラウザで以下にアクセス:
+```
+http://localhost:8080
+```
+
+## 使い方
+
+1. **Excelファイルの準備**
+   - `.xlsx` 形式のExcelファイルを用意
+   - 実行したいシェルコマンドを1列に記載
+
+2. **アプリケーションでの操作**
+   - Excelファイルをアップロード
+   - コマンドが記載されている列を選択
+   - コマンド実行間隔(秒)を設定
+   - 「Execute Commands」ボタンをクリック
+
+3. **結果の確認**
+   - 各コマンドの実行結果を表示
+   - 成功/失敗のステータス
+   - 標準出力/エラー出力
+   - 終了コード
+
+## Excelファイルのサンプル
+
+| コマンド |
+|---------|
+| echo "Hello World" |
+| date |
+| ls -la |
+| pwd |
+
+## OS別のコマンド例
+
+### Windows
+```
+dir
+echo %USERNAME%
+ipconfig
+```
+
+### macOS / Linux
+```
+ls -la
+echo $USER
+ifconfig
+```
+
+## セキュリティに関する注意
+
+⚠️ **重要**: このアプリケーションは実際のシェルコマンドを実行します。
+
+- 信頼できるExcelファイルのみを使用してください
+- 本番環境での使用は十分に検討してください
+- 悪意のあるコマンドが実行されるリスクを理解してください
+
+## カスタマイズ
+
+### ポート番号の変更
+
+`application.properties`:
+```properties
+server.port=9090
+```
+
+### ファイルサイズ上限の変更
+
+`application.properties`:
+```properties
+spring.servlet.multipart.max-file-size=50MB
+spring.servlet.multipart.max-request-size=50MB
+```
+
+## トラブルシューティング
+
+### Java バージョンエラー
+```bash
+java -version
+# Java 21以上であることを確認
+```
+
+### ポートが使用中
+```bash
+# 別のポートを指定
+mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=9090
+```
+
+### Excelファイルが読み込めない
+- `.xlsx` 形式であることを確認
+- ファイルが破損していないか確認
+- 別のアプリケーションで開いていないか確認
+
+## ライセンス
+
+MIT License
+
+## 作成者
+
+Excel Shell Executor Team

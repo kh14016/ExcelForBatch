@@ -1,0 +1,156 @@
+package com.example.excelshell.Service;
+
+import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+
+@Slf4j
+@Service
+public class ShellExecutorService {
+
+    public List<String> getColumnList(MultipartFile file) throws IOException {
+        List<String> columns = new ArrayList<>();
+        
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            Row headerRow = sheet.getRow(0);
+            
+            if (headerRow != null) {
+                for (Cell cell : headerRow) {
+                    String columnName = getCellValueAsString(cell);
+                    columns.add(String.format("%s (%s)", columnName, getColumnLetter(cell.getColumnIndex())));
+                }
+            }
+        }
+        
+        return columns;
+    }
+
+    public List<ExecutionResult> executeCommands(MultipartFile file, int columnIndex, int waitTimeSeconds) throws IOException {
+        List<ExecutionResult> results = new ArrayList<>();
+        
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+                
+                Cell cell = row.getCell(columnIndex);
+                if (cell == null) continue;
+                
+                String command = getCellValueAsString(cell);
+                if (command.isBlank()) continue;
+                
+                log.info("Executing command [Row {}]: {}", i + 1, command);
+                ExecutionResult result = executeShellCommand(command, i + 1);
+                results.add(result);
+                
+                if (i < sheet.getLastRowNum() && waitTimeSeconds > 0) {
+                    try {
+                        Thread.sleep(waitTimeSeconds * 1000L);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        log.error("Sleep interrupted", e);
+                    }
+                }
+            }
+        }
+        
+        return results;
+    }
+
+    private ExecutionResult executeShellCommand(String command, int rowNumber) {
+        ExecutionResult result = new ExecutionResult();
+        result.setRowNumber(rowNumber);
+        result.setCommand(command);
+        
+        try {
+            ProcessBuilder processBuilder = new ProcessBuilder();
+            
+            String os = System.getProperty("os.name").toLowerCase();
+            if (os.contains("win")) {
+                processBuilder.command("cmd.exe", "/c", command);
+            } else {
+                processBuilder.command("sh", "-c", command);
+            }
+            
+            processBuilder.redirectErrorStream(true);
+            Process process = processBuilder.start();
+            
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+            }
+            
+            int exitCode = process.waitFor();
+            result.setSuccess(exitCode == 0);
+            result.setOutput(output.toString());
+            result.setExitCode(exitCode);
+            
+        } catch (Exception e) {
+            result.setSuccess(false);
+            result.setOutput("Error: " + e.getMessage());
+            result.setExitCode(-1);
+            log.error("Command execution failed", e);
+        }
+        
+        return result;
+    }
+
+    private String getCellValueAsString(Cell cell) {
+        if (cell == null) return "";
+        
+        return switch (cell.getCellType()) {
+            case STRING -> cell.getStringCellValue();
+            case NUMERIC -> String.valueOf((long) cell.getNumericCellValue());
+            case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
+            case FORMULA -> cell.getCellFormula();
+            default -> "";
+        };
+    }
+
+    private String getColumnLetter(int columnIndex) {
+        StringBuilder column = new StringBuilder();
+        while (columnIndex >= 0) {
+            column.insert(0, (char) ('A' + (columnIndex % 26)));
+            columnIndex = (columnIndex / 26) - 1;
+        }
+        return column.toString();
+    }
+}
+
+class ExecutionResult {
+    private int rowNumber;
+    private String command;
+    private boolean success;
+    private String output;
+    private int exitCode;
+
+    public int getRowNumber() { return rowNumber; }
+    public void setRowNumber(int rowNumber) { this.rowNumber = rowNumber; }
+    
+    public String getCommand() { return command; }
+    public void setCommand(String command) { this.command = command; }
+    
+    public boolean isSuccess() { return success; }
+    public void setSuccess(boolean success) { this.success = success; }
+    
+    public String getOutput() { return output; }
+    public void setOutput(String output) { this.output = output; }
+    
+    public int getExitCode() { return exitCode; }
+    public void setExitCode(int exitCode) { this.exitCode = exitCode; }
+}
